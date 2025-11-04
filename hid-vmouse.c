@@ -21,6 +21,9 @@ MODULE_AUTHOR("droc101");
 #define BUTTONS_BASE BTN_MOUSE
 #define BUTTONS_COUNT 17
 
+int allow_non_root_write = 0;
+module_param(allow_non_root_write, int, 0);
+
 #pragma region mouse
 
 static struct input_dev *virtual_mouse = NULL;
@@ -167,7 +170,11 @@ static struct file_operations fops = {
 
 static int device_uevent(const struct device *dev, struct kobj_uevent_env *env)
 {
-    add_uevent_var(env, "DEVMODE=0222"); // -w--w--w-
+    if (allow_non_root_write) {
+        add_uevent_var(env, "DEVMODE=0222"); // c-w--w--w-
+    } else {
+        add_uevent_var(env, "DEVMODE=0200"); // c-w-------
+    }
     return 0;
 }
 
