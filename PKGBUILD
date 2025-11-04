@@ -1,4 +1,4 @@
-# Maintainer: droc101 <droc101@droc101.dev>
+# Maintainer: droc101 <droc101(at)droc101(dot)dev>
 
 _pkgbase=vmouse
 _dkmsname=hid-vmouse
@@ -18,6 +18,7 @@ package() {
   install -d "${pkgdir}/usr/src/${_pkgbase}-${pkgver}"
   cp -r "$srcdir/vmouse-main/"* "${pkgdir}/usr/src/${_pkgbase}-${pkgver}/"
 
+  # Add modules-load.d entry to autoload module on boot
   install -Dm644 /dev/null "${pkgdir}/etc/modules-load.d/${_dkmsname}.conf"
   echo "${_dkmsname}" >> "${pkgdir}/etc/modules-load.d/${_dkmsname}.conf"
 }
