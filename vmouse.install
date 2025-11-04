@@ -1,0 +1,18 @@
+post_install() {
+  dkms add vmouse/1.0.1
+  cat << EOF
+==> To load this module, reboot or run "modprobe hid-vmouse"
+EOF
+}
+
+pre_upgrade() {
+  pre_remove
+}
+
+post_upgrade() {
+  post_install
+}
+
+pre_remove() {
+  [ -n "${1%-*}" ] && dkms remove vmouse/1.0.1 --all &>/dev/null || true
+}
