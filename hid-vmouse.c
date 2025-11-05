@@ -13,13 +13,12 @@
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("droc101");
 
-#define CMD_RESET 0
-#define CMD_DOWN 1
-#define CMD_UP 2
-// #define CMD_MOVE 3 // TODO
+#define BUTTON_CMD_RESET 0
+#define BUTTON_CMD_DOWN 1
+#define BUTTON_CMD_UP 2
+#define BUTTON_CMD_CLICK 3
 
 #define BUTTONS_BASE BTN_MOUSE
-#define BUTTONS_COUNT 17
 
 int allow_non_root_write = 0;
 module_param(allow_non_root_write, int, 0);
@@ -73,49 +72,36 @@ static int init_vmouse(void)
 
 #pragma endregion
 
-static void handle_command(unsigned char command, unsigned char payload)
+static void handle_button_command(unsigned char command, unsigned char payload)
 {
-    if (!virtual_mouse) {
+    if (!virtual_mouse)
+    {
         printk(KERN_ALERT "vmouse: virtual_mouse is NULL!");
         return;
     }
     // printk(KERN_INFO "vmouse: received command %u with payload %u\n", command, payload);
     switch (command)
     {
-    case CMD_RESET:
-        for (int i = 0; i < BUTTONS_COUNT; i++)
+    case BUTTON_CMD_RESET:
+        for (int i = 0; i < 8; i++)
         {
             input_report_key(virtual_mouse, BUTTONS_BASE + i, 0);
         }
         break;
-    case CMD_DOWN:
-        if (payload < BUTTONS_COUNT)
-        {
-            // printk(KERN_INFO "vmouse: pressing button 0x%x\n", BUTTONS_BASE + payload);
-            input_report_key(virtual_mouse, BUTTONS_BASE + payload, 1);
-        }
-        else
-        {
-            printk(KERN_WARNING "vmouse: received command to press key 0x%x, however that is out of range!", payload);
-        }
+    case BUTTON_CMD_DOWN:
+        // printk(KERN_INFO "vmouse: pressing button 0x%x\n", BUTTONS_BASE + payload);
+        input_report_key(virtual_mouse, BUTTONS_BASE + payload, 1);
         break;
-    case CMD_UP:
-        if (payload < BUTTONS_COUNT)
-        {
-            // printk(KERN_INFO "vmouse: releasing button 0x%x\n", BUTTONS_BASE + payload);
-            input_report_key(virtual_mouse, BUTTONS_BASE + payload, 0);
-        }
-        else
-        {
-            printk(KERN_WARNING "vmouse: received command to press key 0x%x, however that is out of range!", payload);
-        }
+    case BUTTON_CMD_UP:
+        // printk(KERN_INFO "vmouse: releasing button 0x%x\n", BUTTONS_BASE + payload);
+        input_report_key(virtual_mouse, BUTTONS_BASE + payload, 0);
         break;
-    // case CMD_MOVE:
-    //     char yrel = payload & 0b00000111;
-    //     char xrel = (payload >> 3) & 0b00000111;
-    //     input_report_rel(virtual_mouse, REL_X, xrel);
-    //     input_report_rel(virtual_mouse, REL_Y, yrel);
-    //     break;
+    case BUTTON_CMD_CLICK:
+        // printk(KERN_INFO "vmouse: clicking button 0x%x\n", BUTTONS_BASE + payload);
+        input_report_key(virtual_mouse, BUTTONS_BASE + payload, 1);
+        input_sync(virtual_mouse);
+        input_report_key(virtual_mouse, BUTTONS_BASE + payload, 0);
+        break;
     default:
         printk(KERN_INFO "vmouse: received unknown command %u with payload %u\n", command, payload);
     }
@@ -144,20 +130,31 @@ static int device_release(struct inode *inode, struct file *file)
 static ssize_t device_write(struct file *file, const char __user *buf,
                             size_t count, loff_t *ppos)
 {
-    if (count > 1)
-    {
-        printk(KERN_WARNING "vmouse: Can only write one byte at a time to /dev/vmouse!\n");
+    unsigned char commands[128];
+
+    if (count > 128) {
         return -EFAULT;
     }
 
-    unsigned char fullPayload = 0;
-    if (copy_from_user(&fullPayload, buf, count))
+    if (copy_from_user(commands, buf, count))
         return -EFAULT;
 
-    unsigned char command = (fullPayload >> 6) & 0b00000011;
-    unsigned char payload = fullPayload & 0b00111111;
+    for (size_t i = 0; i < count; i++)
+    {
+        unsigned char fullPayload = commands[i];
+        unsigned char isMove = fullPayload & 0b10000000;
 
-    handle_command(command, payload);
+        if (isMove)
+        {
+            // TODO
+        }
+        else
+        {
+            unsigned char command = (fullPayload >> 4) & 0b00001111;
+            unsigned char payload = fullPayload & 0b00000111;
+            handle_button_command(command, payload);
+        }
+    }
 
     return count;
 }
@@ -170,9 +167,12 @@ static struct file_operations fops = {
 
 static int device_uevent(const struct device *dev, struct kobj_uevent_env *env)
 {
-    if (allow_non_root_write) {
+    if (allow_non_root_write)
+    {
         add_uevent_var(env, "DEVMODE=0222"); // c-w--w--w-
-    } else {
+    }
+    else
+    {
         add_uevent_var(env, "DEVMODE=0200"); // c-w-------
     }
     return 0;
