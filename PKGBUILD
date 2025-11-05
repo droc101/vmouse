@@ -3,7 +3,7 @@
 _pkgbase=vmouse
 _dkmsname=hid-vmouse
 pkgname=vmouse-dkms-git
-pkgver=1.0.1
+pkgver=1.0.2
 pkgrel=1
 pkgdesc="Virtual mouse kernel module with DKMS support"
 arch=('x86_64')

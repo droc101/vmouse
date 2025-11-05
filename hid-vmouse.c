@@ -79,7 +79,7 @@ static void handle_command(unsigned char command, unsigned char payload)
         printk(KERN_ALERT "vmouse: virtual_mouse is NULL!");
         return;
     }
-    printk(KERN_INFO "vmouse: received command %u with payload %u\n", command, payload);
+    // printk(KERN_INFO "vmouse: received command %u with payload %u\n", command, payload);
     switch (command)
     {
     case CMD_RESET:
